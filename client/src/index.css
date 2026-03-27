@@ -5,7 +5,7 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-slate-800;
   }
   body {
     @apply bg-slate-950 text-slate-100 font-sans antialiased;

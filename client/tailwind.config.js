@@ -7,6 +7,7 @@ export default {
         sans: ["Inter", "sans-serif"],
       },
       colors: {
+        border: "#1e293b", // slate-800
         primary: {
           50: "#eff6ff",
           100: "#dbeafe",

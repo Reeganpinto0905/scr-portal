@@ -12,7 +12,7 @@ const ROLES = [
 export default function LoginPage() {
   const [mode, setMode] = useState("login"); // login | signup
   const [role, setRole] = useState("student");
-  const [form, setForm] = useState({ name: "", username: "", password: "" });
+  const [form, setForm] = useState({ name: "", username: "", password: "", studentId: "" });
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -33,7 +33,7 @@ export default function LoginPage() {
     setError(null);
     try {
       const payload = mode === "signup"
-        ? { name: form.name, username: form.username, password: form.password, role }
+        ? { name: form.name, username: form.username, password: form.password, role, studentId: role === "student" ? form.studentId : undefined }
         : { username: form.username, password: form.password };
       const apiFn = mode === "signup" ? signup : login;
       const res = await apiFn(payload);
@@ -114,15 +114,29 @@ export default function LoginPage() {
               </div>
             )}
 
+            {mode === "signup" && role === "student" && (
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Student ID</label>
+                <input
+                  name="studentId"
+                  value={form.studentId}
+                  onChange={handleChange}
+                  placeholder="e.g. STU2024001"
+                  required
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-600 uppercase"
+                />
+              </div>
+            )}
+
             <div>
               <label className="block text-xs text-slate-400 mb-1">
-                {role === "student" ? "Student ID / Username" : "Username"}
+                {role === "student" ? "Username / Email" : "Username"}
               </label>
               <input
                 name="username"
                 value={form.username}
                 onChange={handleChange}
-                placeholder={role === "student" ? "e.g. STU2024001" : "e.g. prof.smith"}
+                placeholder={role === "student" ? "e.g. john.doe" : "e.g. prof.smith"}
                 required
                 className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-600"
               />

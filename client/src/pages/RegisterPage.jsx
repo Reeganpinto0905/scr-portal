@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { getCourses, registerCourses } from "../api";
-import { CheckCircle2, XCircle, AlertTriangle, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, Trash2, GraduationCap } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 export default function RegisterPage() {
+  const { user } = useAuth();
   const [courses, setCourses] = useState([]);
-  const [studentId, setStudentId] = useState("");
   const [selected, setSelected] = useState([]);
   const [status, setStatus] = useState(null); // { type: 'success'|'error'|'clash', message }
   const [loading, setLoading] = useState(false);
@@ -22,12 +23,11 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!studentId.trim()) return setStatus({ type: "error", message: "Student ID is required." });
     if (selected.length === 0) return setStatus({ type: "error", message: "Select at least one course." });
     setLoading(true);
     setStatus(null);
     try {
-      await registerCourses({ studentId: studentId.trim(), courseIds: selected });
+      await registerCourses({ courseIds: selected });
       setStatus({ type: "success", message: "Registration successful! Check your schedule." });
       setSelected([]);
     } catch (err) {
@@ -88,15 +88,13 @@ export default function RegisterPage() {
 
         {/* Summary panel */}
         <div className="space-y-4">
-          <div className="card">
-            <p className="text-sm font-medium text-slate-300 mb-3">Student ID</p>
-            <input
-              type="text"
-              value={studentId}
-              onChange={(e) => setStudentId(e.target.value)}
-              placeholder="e.g. STU2024001"
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-600"
-            />
+          <div className="card border-primary-900/50 bg-primary-950/10">
+            <div className="flex items-center gap-2 text-primary-400 font-semibold mb-1">
+              <GraduationCap className="w-4 h-4" />
+              <span>Student Profile</span>
+            </div>
+            <p className="text-white text-sm font-bold">{user?.name}</p>
+            <p className="text-slate-400 text-xs font-mono uppercase tracking-wider">{user?.studentId}</p>
           </div>
 
           <div className="card">

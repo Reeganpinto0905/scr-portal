@@ -79,10 +79,18 @@ const registerCourses = async (req, res) => {
     // Check if student already has a registration
     const existing = await Registration.findOne({ student: studentId }).populate("courses");
     if (existing) {
+      // Check for already-registered courses
+      const duplicates = courses.filter((c) =>
+        existing.courses.some((ec) => ec._id.equals(c._id))
+      );
+      if (duplicates.length > 0) {
+        return res.status(400).json({
+          message: `You are already registered for: ${duplicates.map((c) => c.name).join(", ")}`,
+        });
+      }
+
       // Merge with already-registered courses for clash check
-      const merged = [...existing.courses, ...courses.filter(
-        (c) => !existing.courses.some((ec) => ec._id.equals(c._id))
-      )];
+      const merged = [...existing.courses, ...courses];
       const mergedClashes = detectClashes(merged);
       if (mergedClashes.length > 0) {
         return res.status(400).json({
@@ -91,10 +99,7 @@ const registerCourses = async (req, res) => {
         });
       }
       // Append new courses
-      const newIds = courseIds.filter(
-        (id) => !existing.courses.some((ec) => ec._id.toString() === id)
-      );
-      existing.courses.push(...newIds);
+      existing.courses.push(...courseIds);
       await existing.save();
     } else {
       await Registration.create({ student: studentId, courses: courseIds });
