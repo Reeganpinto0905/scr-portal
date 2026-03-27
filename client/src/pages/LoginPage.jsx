@@ -75,28 +75,30 @@ export default function LoginPage() {
             ))}
           </div>
 
-          {/* Role selector */}
-          <div className="mb-5">
-            <p className="text-xs text-slate-400 mb-2 font-medium uppercase tracking-wider">I am a</p>
-            <div className="grid grid-cols-2 gap-3">
-              {ROLES.map((r) => (
-                <button
-                  key={r.value}
-                  type="button"
-                  onClick={() => setRole(r.value)}
-                  className={`flex flex-col items-center gap-1 p-3 rounded-lg border transition-all text-sm ${
-                    role === r.value
-                      ? "border-primary-600 bg-primary-900/30 text-primary-400"
-                      : "border-slate-700 text-slate-400 hover:border-slate-500"
-                  }`}
-                >
-                  {r.icon}
-                  <span className="font-medium">{r.label}</span>
-                  <span className="text-xs text-slate-500">{r.desc}</span>
-                </button>
-              ))}
+          {/* Role selector - Only during signup */}
+          {mode === "signup" && (
+            <div className="mb-5 animate-in fade-in slide-in-from-top-2 duration-300">
+              <p className="text-xs text-slate-400 mb-2 font-medium uppercase tracking-wider">I am a</p>
+              <div className="grid grid-cols-2 gap-3">
+                {ROLES.map((r) => (
+                  <button
+                    key={r.value}
+                    type="button"
+                    onClick={() => setRole(r.value)}
+                    className={`flex flex-col items-center gap-1 p-3 rounded-lg border transition-all text-sm ${
+                      role === r.value
+                        ? "border-primary-600 bg-primary-900/30 text-primary-400"
+                        : "border-slate-700 text-slate-400 hover:border-slate-500"
+                    }`}
+                  >
+                    {r.icon}
+                    <span className="font-medium">{r.label}</span>
+                    <span className="text-xs text-slate-500">{r.desc}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -130,13 +132,13 @@ export default function LoginPage() {
 
             <div>
               <label className="block text-xs text-slate-400 mb-1">
-                {role === "student" ? "Username / Email" : "Username"}
+                {mode === "login" ? "Username" : role === "student" ? "Username / Email" : "Username"}
               </label>
               <input
                 name="username"
                 value={form.username}
                 onChange={handleChange}
-                placeholder={role === "student" ? "e.g. john.doe" : "e.g. prof.smith"}
+                placeholder={mode === "login" ? "Enter your username" : role === "student" ? "e.g. john.doe" : "e.g. prof.smith"}
                 required
                 className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-600"
               />

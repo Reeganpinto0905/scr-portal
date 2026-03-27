@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { createCourse, getCourses, getCourseStudents, addStudentToCourse, removeStudentFromCourse } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { PlusCircle, BookOpenCheck, Clock, Users, UserPlus, Trash2, X } from "lucide-react";
@@ -78,7 +79,7 @@ export default function TeacherDashboard() {
     try {
       const res = await getCourseStudents(course._id);
       setStudents(res.data);
-    } catch (err) {
+    } catch {
       setMgmtStatus({ type: "error", message: "Failed to load students." });
     } finally {
       setLoadingStudents(false);
@@ -112,7 +113,7 @@ export default function TeacherDashboard() {
       setMgmtStatus({ type: "success", message: "Student removed successfully." });
       // Update local course seat count
       setCourses(prev => prev.map(c => c._id === managingCourse._id ? { ...c, enrolledSeats: c.enrolledSeats - 1 } : c));
-    } catch (err) {
+    } catch {
       setMgmtStatus({ type: "error", message: "Failed to remove student." });
     }
   };
