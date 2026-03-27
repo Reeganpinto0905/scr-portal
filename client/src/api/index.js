@@ -20,6 +20,10 @@ export const signup = (data) => api.post("/auth/signup", data);
 export const getCourses = () => api.get("/courses");
 export const createCourse = (data) => api.post("/courses", data);
 
+export const getCourseStudents = (id) => api.get(`/courses/${id}/students`);
+export const addStudentToCourse = (id, studentId) => api.post(`/courses/${id}/students`, { studentId });
+export const removeStudentFromCourse = (id, userId) => api.delete(`/courses/${id}/students/${userId}`);
+
 // Registration
 export const registerCourses = (data) => api.post("/register", data);
 export const getMyRegistrations = () => api.get("/register/me");

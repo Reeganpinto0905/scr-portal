@@ -117,14 +117,92 @@ const registerCourses = async (req, res) => {
   }
 };
 
-// GET /api/register/me
-const getMyRegistrations = async (req, res) => {
+/**
+ * GET /api/courses/:id/students (Teacher only)
+ * Get all students registered for a course
+ */
+const getStudentsInCourse = async (req, res) => {
   try {
-    const reg = await Registration.findOne({ student: req.user.id }).populate("courses");
-    res.json(reg?.courses || []);
+    const courseId = req.params.id;
+    const registrations = await Registration.find({ courses: courseId }).populate("student", "name username studentId");
+    const students = registrations.map((r) => r.student);
+    res.json(students);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-module.exports = { registerCourses, getMyRegistrations };
+/**
+ * POST /api/courses/:id/students (Teacher only)
+ * Add a student to a course by their studentId
+ */
+const addStudentToCourse = async (req, res) => {
+  try {
+    const courseId = req.params.id;
+    const { studentId } = req.body; // Explicit Student ID (e.g. STU001)
+
+    if (!studentId) return res.status(400).json({ message: "Student ID required." });
+
+    const student = await User.findOne({ studentId: studentId.toUpperCase(), role: "student" });
+    if (!student) return res.status(404).json({ message: "Student not found." });
+
+    const course = await Course.findById(courseId);
+    if (!course) return res.status(404).json({ message: "Course not found." });
+
+    if (course.enrolledSeats >= course.totalSeats) {
+      return res.status(400).json({ message: "Course is already full." });
+    }
+
+    let registration = await Registration.findOne({ student: student._id }).populate("courses");
+    if (registration) {
+      if (registration.courses.some((c) => c._id.equals(courseId))) {
+        return res.status(400).json({ message: "Student is already registered for this course." });
+      }
+      
+      // Check for clashes
+      const merged = [...registration.courses, course];
+      const clashes = detectClashes(merged);
+      if (clashes.length > 0) {
+        return res.status(400).json({ message: "Student have a schedule clash with this course.", clashes });
+      }
+
+      registration.courses.push(courseId);
+      await registration.save();
+    } else {
+      await Registration.create({ student: student._id, courses: [courseId] });
+    }
+
+    course.enrolledSeats += 1;
+    await course.save();
+
+    res.json({ message: "Student added successfully.", student: { _id: student._id, name: student.name, studentId: student.studentId } });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/**
+ * DELETE /api/courses/:id/students/:userId (Teacher only)
+ * Remove a student from a course
+ */
+const removeStudentFromCourse = async (req, res) => {
+  try {
+    const { id: courseId, userId } = req.params;
+
+    const registration = await Registration.findOne({ student: userId });
+    if (!registration || !registration.courses.includes(courseId)) {
+      return res.status(404).json({ message: "Student is not registered for this course." });
+    }
+
+    registration.courses = registration.courses.filter((c) => c.toString() !== courseId);
+    await registration.save();
+
+    await Course.findByIdAndUpdate(courseId, { $inc: { enrolledSeats: -1 } });
+
+    res.json({ message: "Student removed successfully." });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { registerCourses, getMyRegistrations, getStudentsInCourse, addStudentToCourse, removeStudentFromCourse };

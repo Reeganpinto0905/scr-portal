@@ -1,7 +1,6 @@
-import { useState } from "react";
-import { createCourse, getCourses } from "../api";
+import { createCourse, getCourses, getCourseStudents, addStudentToCourse, removeStudentFromCourse } from "../api";
 import { useAuth } from "../context/AuthContext";
-import { PlusCircle, BookOpenCheck, Clock, Users } from "lucide-react";
+import { PlusCircle, BookOpenCheck, Clock, Users, UserPlus, Trash2, X } from "lucide-react";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -23,6 +22,11 @@ export default function TeacherDashboard() {
   const [status, setStatus] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [tab, setTab] = useState("create"); // create | list
+  const [managingCourse, setManagingCourse] = useState(null); // Course currently being managed
+  const [students, setStudents] = useState([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [newStudentId, setNewStudentId] = useState("");
+  const [mgmtStatus, setMgmtStatus] = useState(null);
 
   const fetchCourses = async () => {
     setLoadingCourses(true);
@@ -63,6 +67,53 @@ export default function TeacherDashboard() {
       setStatus({ type: "error", message: err.response?.data?.message || "Failed to create course." });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const openStudentMgmt = async (course) => {
+    setManagingCourse(course);
+    setLoadingStudents(true);
+    setMgmtStatus(null);
+    setNewStudentId("");
+    try {
+      const res = await getCourseStudents(course._id);
+      setStudents(res.data);
+    } catch (err) {
+      setMgmtStatus({ type: "error", message: "Failed to load students." });
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
+
+  const handleAddStudent = async (e) => {
+    e.preventDefault();
+    if (!newStudentId.trim()) return;
+    setSubmitting(true);
+    setMgmtStatus(null);
+    try {
+      const res = await addStudentToCourse(managingCourse._id, newStudentId);
+      setStudents((prev) => [...prev, res.data.student]);
+      setNewStudentId("");
+      setMgmtStatus({ type: "success", message: res.data.message });
+      // Update local course seat count
+      setCourses(prev => prev.map(c => c._id === managingCourse._id ? { ...c, enrolledSeats: c.enrolledSeats + 1 } : c));
+    } catch (err) {
+      setMgmtStatus({ type: "error", message: err.response?.data?.message || "Failed to add student." });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRemoveStudent = async (userId) => {
+    if (!window.confirm("Are you sure you want to remove this student?")) return;
+    try {
+      await removeStudentFromCourse(managingCourse._id, userId);
+      setStudents((prev) => prev.filter((s) => s._id !== userId));
+      setMgmtStatus({ type: "success", message: "Student removed successfully." });
+      // Update local course seat count
+      setCourses(prev => prev.map(c => c._id === managingCourse._id ? { ...c, enrolledSeats: c.enrolledSeats - 1 } : c));
+    } catch (err) {
+      setMgmtStatus({ type: "error", message: "Failed to remove student." });
     }
   };
 
@@ -214,12 +265,80 @@ export default function TeacherDashboard() {
                   {c.schedule?.map((s) => `${s.day} ${s.startTime}–${s.endTime}`).join(" | ")}
                 </div>
               </div>
-              <div className="flex items-center gap-1 text-sm text-slate-300">
-                <Users className="w-4 h-4 text-slate-500" />
-                {c.enrolledSeats}/{c.totalSeats}
+              <div className="flex flex-col items-end gap-2">
+                <div className="flex items-center gap-1 text-sm text-slate-300">
+                  <Users className="w-4 h-4 text-slate-500" />
+                  {c.enrolledSeats}/{c.totalSeats}
+                </div>
+                <button
+                  onClick={() => openStudentMgmt(c)}
+                  className="text-xs text-primary-400 hover:text-primary-300 font-medium bg-primary-900/20 px-2 py-1 rounded"
+                >
+                  Manage Students
+                </button>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Student Management Overlay / Modal */}
+      {managingCourse && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="card w-full max-w-lg flex flex-col max-h-[80vh]">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Users className="w-5 h-5 text-primary-500" />
+                <span>{managingCourse.code}: {managingCourse.name}</span>
+              </h2>
+              <button onClick={() => setManagingCourse(null)} className="text-slate-400 hover:text-white">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddStudent} className="flex gap-2 mb-4">
+              <input
+                value={newStudentId}
+                onChange={(e) => setNewStudentId(e.target.value.toUpperCase())}
+                placeholder="Enter Student ID (e.g. STU001)"
+                className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-primary-600"
+              />
+              <button type="submit" disabled={submitting} className="btn-primary flex items-center gap-1 text-sm px-3">
+                <UserPlus className="w-4 h-4" /> Add
+              </button>
+            </form>
+
+            <div className="flex-1 overflow-y-auto space-y-2 min-h-[200px] border-t border-slate-800 pt-4">
+              {loadingStudents ? (
+                <p className="text-slate-500 text-center animate-pulse py-10">Loading students...</p>
+              ) : students.length === 0 ? (
+                <p className="text-slate-500 text-center py-10">No students enrolled yet.</p>
+              ) : (
+                students.map((student) => (
+                  <div key={student._id} className="bg-slate-800/50 rounded-lg p-3 flex items-center justify-between border border-transparent hover:border-slate-700 transition-colors">
+                    <div>
+                      <p className="text-white text-sm font-medium">{student.name}</p>
+                      <p className="text-slate-500 text-xs font-mono uppercase truncate max-w-[150px]">{student.studentId || "NO-ID"}</p>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveStudent(student._id)}
+                      className="text-slate-500 hover:text-red-400 transition-colors p-1"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {mgmtStatus && (
+              <div className={`mt-4 p-2 text-xs rounded border ${
+                mgmtStatus.type === "success" ? "bg-emerald-900/10 border-emerald-800 text-emerald-400" : "bg-red-900/10 border-red-900 text-red-400"
+              }`}>
+                {mgmtStatus.message}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </main>
