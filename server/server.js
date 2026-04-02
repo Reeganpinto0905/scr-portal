@@ -33,7 +33,17 @@ mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log("✅ MongoDB connected");
-    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+    const server = app.listen(PORT, "0.0.0.0", () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
+
+    server.on("error", (err) => {
+      if (err.code === "EADDRINUSE") {
+        console.error(`❌ Port ${PORT} is already in use.`);
+      } else {
+        console.error("❌ Server error:", err.message);
+      }
+    });
   })
   .catch((err) => {
     console.error("❌ MongoDB connection failed:", err.message);
