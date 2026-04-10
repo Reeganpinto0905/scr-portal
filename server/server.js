@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
+const path = require("path");
 
 const authRoutes = require("./routes/authRoutes");
 const courseRoutes = require("./routes/courseRoutes");
@@ -10,6 +11,11 @@ const registrationRoutes = require("./routes/registrationRoutes");
 const app = express();
 
 // Middleware
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
+
 app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:5173" }));
 app.use(express.json());
 
@@ -20,6 +26,20 @@ app.use("/api/register", registrationRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
+
+// Serve static files in production
+if (process.env.NODE_ENV === "production") {
+  const clientDistPath = path.join(__dirname, "../client/dist");
+  app.use(express.static(clientDistPath));
+
+  app.get("*", (req, res) => {
+    // If request starts with /api, it's a 404 for API, not for static files
+    if (req.url.startsWith("/api")) {
+      return res.status(404).json({ message: "API route not found" });
+    }
+    res.sendFile(path.join(clientDistPath, "index.html"));
+  });
+}
 
 // Global error handler
 app.use((err, req, res, next) => {
