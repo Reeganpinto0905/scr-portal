@@ -32,7 +32,7 @@ if (process.env.NODE_ENV === "production") {
   const clientDistPath = path.join(__dirname, "../client/dist");
   app.use(express.static(clientDistPath));
 
-  app.get("*", (req, res) => {
+  app.get("(.*)", (req, res) => {
     // If request starts with /api, it's a 404 for API, not for static files
     if (req.url.startsWith("/api")) {
       return res.status(404).json({ message: "API route not found" });
@@ -47,25 +47,25 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: "Internal server error." });
 });
 
-// Connect to MongoDB and start server
-const PORT = process.env.PORT || 5000;
+// Connect to MongoDB
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log("✅ MongoDB connected");
-    const server = app.listen(PORT, "0.0.0.0", () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-    });
-
-    server.on("error", (err) => {
-      if (err.code === "EADDRINUSE") {
-        console.error(`❌ Port ${PORT} is already in use.`);
-      } else {
-        console.error("❌ Server error:", err.message);
-      }
-    });
-  })
+  .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => {
     console.error("❌ MongoDB connection failed:", err.message);
-    process.exit(1);
+    // Don't exit immediately, let the server handle requests (maybe with a 503)
   });
+
+// Start server
+const PORT = process.env.PORT || 5000;
+const server = app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
+
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(`❌ Port ${PORT} is already in use.`);
+  } else {
+    console.error("❌ Server error:", err.message);
+  }
+});
